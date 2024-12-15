@@ -1,9 +1,7 @@
-# from flask import Flask, request, render_template
 import joblib
 import pandas as pd
 import numpy as np
 import math
-# from sklearn.preprocessing import LabelEncoder, MaxAbsScaler
 import streamlit as st
 
 #Load lại các giá trị
