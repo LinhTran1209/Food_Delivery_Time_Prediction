@@ -3,10 +3,11 @@ import pandas as pd
 import numpy as np
 import math
 import streamlit as st
+from st_aggrid import AgGrid, GridOptionsBuilder
 
 #Load lại các giá trị
-label_encoders = joblib.load('label_encoders.pkl')
-label_scaler = joblib.load('label_scalers.pkl')
+label_encoders = joblib.load('checkpoints/label_encoders.pkl')
+label_scaler = joblib.load('checkpoints/label_scalers.pkl')
 
 column_encoders = ["Weatherconditions", "Road_traffic_density", "Type_of_order", "Type_of_vehicle", 
                    "Festival", "City", "Time_of_Day"]
@@ -31,11 +32,11 @@ class ProcessingData:
         self.data_frame['Time_taken(min)'] = self.data_frame['Time_taken(min)'].astype("int")
 
     def get_time(self, hour):
-        if 6 <= hour < 12:
+        if 1 <= hour < 11:
             return 'morning'
         elif hour < 13:
             return 'noon'
-        elif hour < 18:
+        elif hour < 19:
             return 'afternoon'
         else:
             return 'evening'
@@ -72,111 +73,99 @@ class ProcessingData:
         return self.data_frame
 
 
+
+
+
+st.set_page_config(
+    page_title="Food Delivery Time Prediction",
+    page_icon="🚚",
+    layout="wide",
+)
+
 st.title("Food Delivery Time Prediction")
+st.markdown("<div style='height: 50px;'></div>", unsafe_allow_html=True)
 
-delivery_person_age = st.number_input('Delivery Person Age', min_value=0, value=25)
-delivery_person_ratings = st.number_input('Delivery Person Ratings', min_value=0.0, max_value=5.0, value=4.6)
-Restaurant_latitude = st.number_input('Restaurant_latitude', value=13.066762)
-Restaurant_longitude = st.number_input('Delivery Location Longitude', value=80.251865)
-delivery_location_latitude = st.number_input('Delivery Location Latitude', value=13.146762)
-delivery_location_longitude = st.number_input('Delivery Location Longitude', value=80.331865)
-time_ordered = st.text_input('Time Ordered (HH:MM:SS)', '19:50:00')
-weather_conditions = st.selectbox('Weather Conditions', ['conditions Sunny', 'conditions Stormy', 
-                                                         'conditions Sandstorms', 'conditions Cloudy',
-                                                         'conditions Fog', 'conditions Windy'],index=2)
-road_traffic_density = st.selectbox('Road Traffic Density', ['High', 'Jam', 'Low', 'Medium'],index=1)
-vehicle_condition = st.number_input('Vehicle Condition', min_value=0, max_value=2, value=2)
-type_of_order = st.selectbox('Type of Order', ['Snack', 'Drinks', 'Buffet', 'Meal'],index=1)
-type_of_vehicle = st.selectbox('Type of Vehicle', ['motorcycle', 'scooter', 'electric_scooter'], index=1)
-festival = st.selectbox('Festival', ['No', 'Yes'], index=0)
-city = st.selectbox('City', ['Urban', 'Metropolitian', 'Semi-Urban'], index=1)
+col1, col2 =st.columns([1, 3])
 
-if st.button('Predict'):
-    # Tạo DataFrame cho dữ liệu đầu vào
-    data_test = pd.DataFrame({
-        "Delivery_person_Age": [delivery_person_age],
-        "Delivery_person_Ratings": [delivery_person_ratings],
-        "Restaurant_latitude": [Restaurant_latitude], 
-        "Restaurant_longitude": [Restaurant_longitude], 
-        "Delivery_location_latitude": [delivery_location_latitude],
-        "Delivery_location_longitude": [delivery_location_longitude],
-        "Time_Orderd": [time_ordered],
-        "Weatherconditions": [weather_conditions],
-        "Road_traffic_density": [road_traffic_density],
-        "Vehicle_condition": [vehicle_condition],
-        "Type_of_order": [type_of_order],
-        "Type_of_vehicle": [type_of_vehicle],
-        "Festival": [festival],
-        "City": [city],
-        "Time_taken(min)": ["(min) 25"]
-    })
+with col1:
+    st.session_state.delivery_person_age = st.number_input('Delivery Person Age', min_value=0, value=25, key='age')
+    st.session_state.delivery_person_ratings = st.number_input('Delivery Person Ratings', min_value=0.0, max_value=5.0, value=4.6)
+    st.session_state.Restaurant_latitude = st.number_input('Restaurant_latitude', value=13.066762)
+    st.session_state.Restaurant_longitude = st.number_input('Delivery Location Longitude', value=80.251865)
+    st.session_state.delivery_location_latitude = st.number_input('Delivery Location Latitude', value=13.146762)
+    st.session_state.delivery_location_longitude = st.number_input('Delivery Location Longitude', value=80.331865)
+    st.session_state.time_ordered = st.text_input('Time Ordered (HH:MM:SS)', '19:50:00')
+    st.session_state.weather_conditions = st.selectbox('Weather Conditions', ['conditions Sunny', 'conditions Stormy', 'conditions Sandstorms', 'conditions Cloudy','conditions Fog', 'conditions Windy'],index=2)
+    st.session_state.road_traffic_density = st.selectbox('Road Traffic Density', ['High', 'Jam', 'Low', 'Medium'],index=1)
+    st.session_state.vehicle_condition = st.number_input('Vehicle Condition', min_value=0, max_value=2, value=2)
+    st.session_state.type_of_order = st.selectbox('Type of Order', ['Snack', 'Drinks', 'Buffet', 'Meal'],index=1)
+    st.session_state.type_of_vehicle = st.selectbox('Type of Vehicle', ['motorcycle', 'scooter', 'electric_scooter'], index=1)
+    st.session_state.festival = st.selectbox('Festival', ['No', 'Yes'], index=0)
+    st.session_state.city = st.selectbox('City', ['Urban', 'Metropolitian', 'Semi-Urban'], index=1)
 
-    # Xử lý dữ liệu
-    process_data = ProcessingData(data_test)
-    print(data_test)
-    print(label_encoders)
-    print(label_scaler)
-    dt = process_data.one_data_frame()
-    print(dt)
-    model = joblib.load('model_delivery_time.pth')
-    # Dự đoán
-    pred = model.predict(dt[["Delivery_person_Age", "Delivery_person_Ratings", "Weatherconditions", 
-                               "Road_traffic_density", "Vehicle_condition", "Type_of_order", 
-                               "Type_of_vehicle", "Festival", "City", "Time_of_Day", "distance"]])
+
+with col2:
+    st.markdown("<div style='margin: 30px;'></div>", unsafe_allow_html=True)
+    data_test = pd.read_csv('datasets/data_test_deploy.csv')
     
-    pred_time_taken = label_scaler["Time_taken(min)"].inverse_transform(pred.reshape(-1, 1))
-    print(pred)
-    print(pred_time_taken)
-
-    st.success(f'Predicted Time Taken: {pred_time_taken[0][0]} minutes')
-# streamlit run deploy_Flask.py
-
-
-
-
-
-# app = Flask(__name__)
-
-# @app.route('/', methods=['GET', 'POST'])
-# def predict():
-#     if request.method == 'POST':
-#         # Lấy dữ liệu từ biểu mẫu
-#         data_test = pd.DataFrame({
-#             "Delivery_person_Age": [request.form['Delivery_person_Age']],
-#             "Delivery_person_Ratings": [request.form['Delivery_person_Ratings']],
-#             "Restaurant_latitude": [13.066762], 
-#             "Restaurant_longitude": [80.251865], 
-#             "Delivery_location_latitude": [request.form['Delivery_location_latitude']],
-#             "Delivery_location_longitude": [request.form['Delivery_location_longitude']],
-#             "Time_Orderd": [request.form['Time_Orderd']],
-#             "Weatherconditions": [request.form['Weatherconditions']],
-#             "Road_traffic_density": [request.form['Road_traffic_density']],
-#             "Vehicle_condition": [request.form['Vehicle_condition']],
-#             "Type_of_order": [request.form['Type_of_order']],
-#             "Type_of_vehicle": [request.form['Type_of_vehicle']],
-#             "Festival": [request.form['Festival']],
-#             "City": [request.form['City']],
-#             "Time_taken(min)": ["(min) 25"]  
-#         })
-
-#         # Xử lý dữ liệu đầu vào và dự đoán
-#         process_2 = ProcessingData(data_test)
-#         dt = process_2.one_data_frame()
-
-#         # Dự đoán
-#         model = joblib.load('model_delivery_time.pth')
-#         pred = model.predict(dt[["Delivery_person_Age", "Delivery_person_Ratings", "Weatherconditions", 
-#                                    "Road_traffic_density", "Vehicle_condition", "Type_of_order", 
-#                                    "Type_of_vehicle", "Festival", "City", "Time_of_Day", "distance"]])
+    # Bảng AgGrid
+    gb = GridOptionsBuilder.from_dataframe(data_test)
+    gb.configure_selection('single', use_checkbox=False)
+    grid_response = AgGrid(data_test, gridOptions= gb.build(), height=600, enable_events=True)
+    selected_rows = grid_response.get('selected_rows', None)
+    # Sự kiện
+    if selected_rows is not None and not selected_rows.empty:
+        row = selected_rows.iloc[0]
         
-#         pred_time_taken = label_scaler["Time_taken(min)"].inverse_transform(pred.reshape(-1, 1))
+        st.session_state.delivery_person_age = row['Delivery_person_Age']
+        st.session_state.delivery_person_ratings = row['Delivery_person_Ratings']
+        st.session_state.Restaurant_latitude = row['Restaurant_latitude']
+        st.session_state.Restaurant_longitude = row['Restaurant_longitude']
+        st.session_state.delivery_location_latitude = row['Delivery_location_latitude']
+        st.session_state.delivery_location_longitude = row['Delivery_location_longitude']
+        st.session_state.time_ordered = row['Time_Orderd']
+        st.session_state.weather_conditions = row['Weatherconditions']
+        st.session_state.road_traffic_density = row['Road_traffic_density']
+        st.session_state.vehicle_condition = row['Vehicle_condition']
+        st.session_state.type_of_order = row['Type_of_order']
+        st.session_state.type_of_vehicle = row['Type_of_vehicle']
+        st.session_state.festival = row['Festival']
+        st.session_state.city = row['City']
 
-#         # return render_template('index.html', prediction=pred_time_taken[0][0])
 
-#     return render_template('index.html')
 
-# if __name__ == '__main__':
-#     df = pd.read_csv("data.csv")
-#     process_1 = ProcessingData(df)
-#     process_1.all_data_frame() 
-#     app.run(debug=True)
+    st.markdown("<div style='margin: 46px;'></div>", unsafe_allow_html=True)
+    if st.button('Predict'):
+        data_test = pd.DataFrame({
+            "Delivery_person_Age": [st.session_state.delivery_person_age],
+            "Delivery_person_Ratings": [st.session_state.delivery_person_ratings],
+            "Restaurant_latitude": [st.session_state.Restaurant_latitude], 
+            "Restaurant_longitude": [st.session_state.Restaurant_longitude], 
+            "Delivery_location_latitude": [st.session_state.delivery_location_latitude],
+            "Delivery_location_longitude": [st.session_state.delivery_location_longitude],
+            "Time_Orderd": [st.session_state.time_ordered],
+            "Weatherconditions": [st.session_state.weather_conditions],
+            "Road_traffic_density": [st.session_state.road_traffic_density],
+            "Vehicle_condition": [st.session_state.vehicle_condition],
+            "Type_of_order": [st.session_state.type_of_order],
+            "Type_of_vehicle": [st.session_state.type_of_vehicle],
+            "Festival": [st.session_state.festival],
+            "City": [st.session_state.city],
+            "Time_taken(min)": ["(min) 25"]
+        })
+
+        # Xử lý dữ liệu
+        process_data = ProcessingData(data_test)
+        dt = process_data.one_data_frame()
+        model = joblib.load('checkpoints/model_XGBRegress.pkl')
+        # Dự đoán
+        pred = model.predict(dt[["Delivery_person_Age", "Delivery_person_Ratings", "Weatherconditions", 
+                                "Road_traffic_density", "Vehicle_condition", "Type_of_order", 
+                                "Type_of_vehicle", "Festival", "City", "Time_of_Day", "distance"]])
+        
+        pred_time_taken = label_scaler["Time_taken(min)"].inverse_transform(pred.reshape(-1, 1))
+        print(pred)
+        print(pred_time_taken)
+        st.markdown("<div style='margin: 21px;'></div>", unsafe_allow_html=True)
+        st.success(f'Predicted Time Taken: {pred_time_taken[0][0]} minutes')
+# streamlit run deploy_Streamlit.py
